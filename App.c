@@ -2,6 +2,7 @@
 #include "string.h"
 #include "stdlib.h"
 #include "ctype.h"
+#include "sys/stat.h" //for doesDirExist()
 
 
 //STRUCTS
@@ -144,6 +145,39 @@ pOut parseURL(char* str, int strLength, char* url, int urlLength){
 }
 
 
+// Checks if a file is empty or not
+int isFileEmpty(char* fileName){
+    FILE* file = fopen(fileName, "r");
+
+    // If there is a char in the file, it isn't empty
+    if (fgetc(file) != EOF){
+        fclose(file);
+        return 0;
+    }
+
+    // Otherwise, the file is empty
+    fclose(file);
+    return 1;
+}
+
+// Checks in the current dir for a dir with a name matching dirName
+int dirExists(char* dirName){
+    struct stat buffer;
+    if (stat(dirName, &buffer) == 0 && S_ISDIR(buffer.st_mode)){ // if the name exists and it's a directory...
+        return 1;
+    }
+    return 0;
+}
+
+// Checks in the current dir for a regular file with a name matching fileName
+int fileExists(char* fileName){
+    struct stat buffer;
+    if (stat(fileName, &buffer) == 0 && S_ISREG(buffer.st_mode)){ // if the name exists and it's a directory...
+        return 1;
+    }
+    return 0;
+}
+
 
 //STRUCTURE MAIN WITH ALL FUNCTIONS BEFORE WRITING THEM SO I REMEMBER THE WORKFLOW
 int main(int argc, char* argv[]){
@@ -185,10 +219,10 @@ int main(int argc, char* argv[]){
 
 
     // Fill ./SnapshotList.txt with the url of every snapshot instance of the site (so we can get the dates later)
-    printf("\n Calling command: %s\nWaiting for response...\n", command);
+    printf("\n-- Calling command: %s\nWaiting for response...\n\n", command);
     fflush(stdout);
     system(command);
-    printf("Response recieved!\n");
+    printf("-- Response recieved!\n\n");
     
     // TODO: Consider switching to perror() instead of using pOut for output validation
     // Get the date from the last line of SnapshotList.txt (most recent snapshot)
@@ -207,7 +241,7 @@ int main(int argc, char* argv[]){
     strcat(command, lastLine); // bash -c './ParseDateV.exe https://web.archive.org/web/NUMBER_GOES_HERE/...
     strcat(command, ";'"); // bash -c './ParseDateV.exe https://web.archive.org/web/NUMBER_GOES_HERE/...;'
 
-    printf("\n%s\n", command);
+    printf("\n-- %s\n\n", command);
     fflush(stdout);
 
     FILE* pipe = popen(command, "r"); // I can open a pipe to capture the output of ParseDateV.exe
@@ -217,7 +251,7 @@ int main(int argc, char* argv[]){
         printf("Error parsing date from last line of SnapshotList");
         return 4;
     }
-    printf("Recieved target date: %s\n", dateStr);
+    printf("-- Recieved target date: %s\n\n", dateStr);
     fflush(stdout);
     fclose(pipe); // We have our str, close the pipe
 
@@ -239,10 +273,10 @@ int main(int argc, char* argv[]){
     strcat(getFileCommand, "'"); // "bash -c 'waybackpack URL --raw -d . --from-date DATE --to-date DATE'"
 
 
-    printf("Running command: %s\nWaiting for response...\n", getFileCommand);
+    printf("-- Running command: %s\nWaiting for response...\n\n", getFileCommand);
     fflush(stdout);
     system(getFileCommand);
-    printf("Response recieved!\n");
+    printf("-- Response recieved!\n");
 
     // need to figure out directory management...
 

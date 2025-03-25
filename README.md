@@ -2,8 +2,12 @@
 
 2. This url is passed into waybackpack with the list flag, and the output of this is passed into a txt file. The command, used with the above url, looks like this: ```waybackpack http://www.superchurch.net/ --to-date 20001010 --list```. If the user didn't give a date, the --to-date flag and its argument will be omitted.
 
-3. The last line of the txt file, which will be the most recent snapshot before the date the user specified, is passed into dateGetter.exe, which grabs the date from the url. Don't forget to remove or clear the text file.
+3. The last line of the txt file, which will be the most recent snapshot before the date the user specified, is passed into dateGetter.exe, which grabs the date from the url. Then, remove the last line of the file. 
 
-4. This date can be used with waybackpack to get a single snapshot of the site from that date. That command will look like this: ```waybackpack http://www.superchurch.net/ --from-date 20000914 --to-date 20000914 -d .``` This will create a directory whose name is the date of the snapshot. Inside of this dir is the directory structure leading to the page we downloaded. We need to cd until we get to the content itself and then move it to ROOTDIR/path/to/file, and then remove the directory structure that came with the file we downloaded.
+4. This date can be used with waybackpack to get a single snapshot of the site from that date. NOTE: Sometimes, the retrieved file will be empty. If this is the case, try getting snapshots from earlier than the most recent one gathered. Should be removing the last line of SnapshotList.txt every time I grab a date, so I can continually grab the last line until I have a date that provides us with a nonempty file. 
+
+Also, sometimes it can't gather a file at all. If this is the case, skip the file and move on to the next one. To check if this is the case, we can check if dirExists(dateStr)
+
+That command will look like this: ```waybackpack http://www.superchurch.net/ --from-date 20000914 --to-date 20000914 -d .``` This will create a directory whose name is the date of the snapshot. Inside of this dir is the directory structure leading to the page we downloaded. We need to cd until we get to the content itself and then move it to ROOTDIR/path/to/file, and then remove the directory structure that came with the file we downloaded.
 
 5. If the page we just downloaded is a html file, then we scan it for <a></a> tags and store links. For each link, if it's contained in the same directory of a subdirectory of the original html file, then we repeat all the above steps on it. For example, if we found a link to http://www.superchurch.net/
