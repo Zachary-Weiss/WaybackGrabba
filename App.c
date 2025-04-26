@@ -118,9 +118,8 @@ pOut readLastLine(char* fileName){
     }
 
 
-    char* line = (char*) malloc(256 * sizeof(char));
     // 255 char max per line
-    //char line[256]; // store the current line
+    char* line = (char*) malloc(256 * sizeof(char));
 
     while (fgets(line, 256, file) != NULL){ // navigate to the end of the file
     }
@@ -160,7 +159,7 @@ int isFileEmpty(char* fileName){
     return 1;
 }
 
-// Checks in the current dir for a dir with a name matching dirName
+// Checks in the current dir for a dir with a name matching dirName. This also works for nested directories, so I can say dirExists("skib/skibidi")
 int dirExists(char* dirName){
     struct stat buffer;
     if (stat(dirName, &buffer) == 0 && S_ISDIR(buffer.st_mode)){ // if the name exists and it's a directory...
@@ -176,6 +175,40 @@ int fileExists(char* fileName){
         return 1;
     }
     return 0;
+}
+
+int removeLastLine(char* fileName){
+    if (!fileExists(fileName)){
+        return 1;
+    }
+    
+    //remove the last line of the file
+    char command[256] = "bash -c 'head -n -1 ";
+    strcat(command, fileName); // "bash -c 'head -n -1 FILENAME"
+    strcat(command, " > temp.txt; mv temp.txt ");
+
+    return 0;
+}
+
+//Changes everything after \n in a string to \n. Probably useless.
+void cleanAfterNull(char* str, int length){
+    int foundNull = 0;
+    for (int i = 0; i < length; i++){
+        if (!foundNull && str[i] == '\0'){
+            foundNull = 1;
+        }
+        if (foundNull){
+            str[i] = '\0';
+        }
+    }
+}
+
+// Changes the last character before the \n in a str to \n
+void removeLastChar(char* str){
+    int len = strlen(str);
+    if (len >= 1){
+        str[len - 1] = '\0';
+    }
 }
 
 
@@ -219,7 +252,7 @@ int main(int argc, char* argv[]){
 
 
     // Fill ./SnapshotList.txt with the url of every snapshot instance of the site (so we can get the dates later)
-    printf("\n-- Calling command: %s\nWaiting for response...\n\n", command);
+    printf("\n-- Calling command: %s\n-- Waiting for response...\n\n", command);
     fflush(stdout);
     system(command);
     printf("-- Response recieved!\n\n");
@@ -273,10 +306,67 @@ int main(int argc, char* argv[]){
     strcat(getFileCommand, "'"); // "bash -c 'waybackpack URL --raw -d . --from-date DATE --to-date DATE'"
 
 
-    printf("-- Running command: %s\nWaiting for response...\n\n", getFileCommand);
+    printf("-- Running command: %s\n-- Waiting for response...\n\n", getFileCommand);
     fflush(stdout);
     system(getFileCommand);
     printf("-- Response recieved!\n");
+
+    
+    //TODO: Here I need to:   
+    //TODO: 1. cd into timestamp dir // Is this necessary/possible?
+
+
+    //TODO: 2. Create a string to store the dir structure. It will start as the timestamp dir
+    char dirStructure[256] = {'\0'};
+    memcpy(dirStructure, dateStr, sizeof(dateStr)); // Copy dateStr over to dirStructure since the dateStr will be the folder containing the stuff we requested
+    char lsOutput[256] = {'\0'};
+
+    while (dirExists(dirStructure)){
+        //TODO: 3. Open a pipe and cd into that string UNLESS THE STRING IS "", in which case you can stay in the current dir
+        char lsCommand[256] = "bash -c 'cd "; // This command will give me the next nested file/dir in the dir structure
+        strcat(lsCommand, dirStructure); // bash -c 'cd DIRSTRUCTURE
+        strcat(lsCommand, "; ls;'"); // bash -c 'cd DIRSTRUCTURE; ls;'
+
+        // Collect the next file/dir using a pipe
+        FILE* lsPipe = popen(lsCommand, "r");
+        if (fgets(lsOutput, sizeof(lsOutput), lsPipe) == NULL){ // capture the output of lsCommand
+            printf("Error getting the output of the command: %s", lsCommand);
+            return 5;
+        }
+        fclose(lsPipe); // close the pipe
+
+        removeLastChar(lsOutput); // ls prints \n after every result, so we have to remove this \n
+
+        //Add the new dir/file to dirStructure
+        strcat(dirStructure, "/"); // CURRENT_STRUCTURE/
+        strcat(dirStructure, lsOutput); // CURRENT_STRUCTURE/NEW_DIR_OR_FILE
+
+        // Check if dirStructure is still the path to a dir
+        if (dirExists(dirStructure)){
+            printf("\nFound dir: %s\n", dirStructure);
+        }
+    }
+
+    // If it is now the path to a file, then we've found our file and can break the loop to extract it
+    if (fileExists(dirStructure)){
+        printf("\nFound file: %s\n", dirStructure);
+    }
+    else {
+        printf("Ruh roh");
+    }
+
+
+
+
+    //TODO: 4. Store the output of "ls ." in a temp string variable
+    //TODO: 5. Check if dirExists(<the temp string variable>)
+
+    //TODO: 6. If it does, add the temp string variable to the string containing the dir structure.
+    //TODO: 7. Repeat steps 3-6 until dirExists(<temp string variable>) is false. This means we have reached the file.
+    //TODO: 8. Run 'mkdir -p DIR_STRUCTURE_STRING' from a new console to ensure we're calling it from "." This will create any directories in that path that don't already exist.
+    //TODO: 9. Move the file from timestamp/DIR_STRUCTURE
+
+    //TODO: If you reach the end of the dir structure and there is no file, we need to delete the timestamp dir and everything inside and then roll back the timestamp to the next most recent line in SnapshotList.txt and try getting it again
 
     // need to figure out directory management...
 
