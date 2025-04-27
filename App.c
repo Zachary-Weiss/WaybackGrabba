@@ -212,6 +212,35 @@ void removeLastChar(char* str){
 }
 
 
+// Removes the first n chars of a string
+void removeFirstNChars(char* str, int n){
+    int len = strlen(str);
+    int outIndex = 0;
+
+    for (int i = n; i < len; i++){
+        str[outIndex] = str[i];
+        outIndex++;
+    }
+
+    for (outIndex; outIndex < len; outIndex++){
+        str[outIndex] = '\0';
+    }
+}
+
+//Doesn't clean the chars after the new null terminator. Call cleanAfterNull on the string afterwards if you want it to be clean.
+void removeLastNChars(char* str, int n){
+    // If they want to clean the whole string, do that instead
+    if (n >= strlen(str)){
+        for (int i = 0; i < strlen(str); i++){
+            str[i] = '\0';
+        }
+        return;
+    }
+
+    str[(strlen(str)) - n] = '\0';
+}
+
+
 //STRUCTURE MAIN WITH ALL FUNCTIONS BEFORE WRITING THEM SO I REMEMBER THE WORKFLOW
 int main(int argc, char* argv[]){
     if (argc == 1){
@@ -319,9 +348,20 @@ int main(int argc, char* argv[]){
     //TODO: 2. Create a string to store the dir structure. It will start as the timestamp dir
     char dirStructure[256] = {'\0'};
     memcpy(dirStructure, dateStr, sizeof(dateStr)); // Copy dateStr over to dirStructure since the dateStr will be the folder containing the stuff we requested
-    char lsOutput[256] = {'\0'};
+    char lsOutput[256] = {'\0'}; // Used inside the burrowing loop to extract the insides of directories
 
+    char fileName[256] = {'\0'}; // Stores the name of the file. This will also be at the end of dirStructure after the loop, if everything goes correctly
+
+
+    //TODO: 4. Store the output of "ls ." in a temp string variable
+    //TODO: 5. Check if dirExists(<the temp string variable>)
+
+    //TODO: 6. If it does, add the temp string variable to the string containing the dir structure.
+    //TODO: 7. Repeat steps 3-6 until dirExists(<temp string variable>) is false. This means we have reached the file.
+
+    // Burrow into the retrieved dir structure to get the path to the file
     while (dirExists(dirStructure)){
+
         //TODO: 3. Open a pipe and cd into that string UNLESS THE STRING IS "", in which case you can stay in the current dir
         char lsCommand[256] = "bash -c 'cd "; // This command will give me the next nested file/dir in the dir structure
         strcat(lsCommand, dirStructure); // bash -c 'cd DIRSTRUCTURE
@@ -336,6 +376,7 @@ int main(int argc, char* argv[]){
         fclose(lsPipe); // close the pipe
 
         removeLastChar(lsOutput); // ls prints \n after every result, so we have to remove this \n
+        strcpy(fileName, lsOutput); // When the loop breaks, this should be storing the name of the file
 
         //Add the new dir/file to dirStructure
         strcat(dirStructure, "/"); // CURRENT_STRUCTURE/
@@ -348,23 +389,30 @@ int main(int argc, char* argv[]){
     }
 
     // If it is now the path to a file, then we've found our file and can break the loop to extract it
-    if (fileExists(dirStructure)){
-        printf("\nFound file: %s\n", dirStructure);
-    }
-    else {
-        printf("Ruh roh");
+    if (!fileExists(dirStructure)) {
+        printf("\n\nError getting path to retrieved file: %s", dirStructure);
+        return 6;
     }
 
+    printf("\nFound retrieved file: %s\n", dirStructure);
+
+    printf("\nFilename: %s", fileName);
 
 
+    // This contains the path to the file excluding the date folder (which contains everything else) and the file itself
+    char dirStructureNoFile[256] = {'\0'};
+    memcpy(dirStructureNoFile, dirStructure, strlen(dirStructure) - strlen(fileName)); // I could've just decreased the size in this call, I didn't need to call removeLastNChars...
+    //removeLastNChars(dirStructureNoFile, strlen(fileName));
+    removeFirstNChars(dirStructureNoFile, strlen(dateStr) + 1); // Remove "DATESTR/" from the path
+    printf("\ndirStructureNoFile: %s", dirStructureNoFile);
 
-    //TODO: 4. Store the output of "ls ." in a temp string variable
-    //TODO: 5. Check if dirExists(<the temp string variable>)
+    char storeFileCommand[256] = "bash -c 'mkdir -p ";
+    strcat(storeFileCommand, dirStructureNoFile); // "bash -c 'mkdir -p PATH/TO/MY/FILE" <- doesn't have the actual file at the end, just the dir containing it
+    strcat(storeFileCommand, "'"); // "bash -c 'mkdir -p PATH/TO/MY/FILE.EXTENTION'"
 
-    //TODO: 6. If it does, add the temp string variable to the string containing the dir structure.
-    //TODO: 7. Repeat steps 3-6 until dirExists(<temp string variable>) is false. This means we have reached the file.
+
     //TODO: 8. Run 'mkdir -p DIR_STRUCTURE_STRING' from a new console to ensure we're calling it from "." This will create any directories in that path that don't already exist.
-    //TODO: 9. Move the file from timestamp/DIR_STRUCTURE
+    //TODO: 9. Move the file from DIR_STRUCTURE to the thing we just made
 
     //TODO: If you reach the end of the dir structure and there is no file, we need to delete the timestamp dir and everything inside and then roll back the timestamp to the next most recent line in SnapshotList.txt and try getting it again
 
